@@ -87,13 +87,19 @@ video = cv2.VideoCapture("videos/solidWhiteRight.mp4")
 #video = cv2.VideoCapture(0)
 car_img = cv2.imread("static_car_photos/car_bev1.png")
 
-video_frame_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-video_frame_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-scale_percent = 67  # Örneğin, orijinal boyutun %50'si
+# car_img scale %50
+scale_percent = 50 # percent of original size
 width = int(car_img.shape[1] * scale_percent / 100)
 height = int(car_img.shape[0] * scale_percent / 100)
 dim = (width, height)
-car_img = cv2.resize(car_img, dim, interpolation=cv2.INTER_AREA)
+car_img = cv2.resize(car_img, dim, interpolation = cv2.INTER_AREA) # 400x400
+# BEYAZ ARKA PLANI SİYAH YAP
+car_img[np.where((car_img==[255,255,255]).all(axis=2))] = [0,0,0]
+# resim boyutunu değiştirmeden üstten 400 piksel ekle
+car_img = np.vstack([np.zeros((400,400,3),dtype=np.uint8),car_img])
+# resim boyutunu değiştirmeden sağdan ve soldan 440 piksel ekle
+car_img = np.hstack([np.zeros((800,440,3),dtype=np.uint8),car_img,np.zeros((800,440,3),dtype=np.uint8)])
+
 while True:
     # Read a frame from the video
     ret, frame = video.read()
@@ -109,28 +115,35 @@ while True:
     if not ret:
         break
     result = detect_lanes(frame)
-    top, bottom, left, right = [0, 500, 100, 0]  # Örneğin, her bir kenar için 50 piksel
+    result = cv2.resize(result, (1280, 400))
+    
+    result = np.vstack([np.zeros((75,1280,3),dtype=np.uint8),result,np.zeros((325,1280,3),dtype=np.uint8)]) 
+    #np.zeros((75,1280,3),dtype=np.uint8) şu anlama gelir 75x1280 boyutunda siyah bir resim oluştur
+    #np.zeros((325,1280,3),dtype=np.uint8) şu anlama gelir 325x1280 boyutunda siyah bir resim oluştur
+    #result = np.vstack([np.zeros((75,1280,3),dtype=np.uint8),result,np.zeros((325,1280,3),dtype=np.uint8)]) #oluşturulan siyah resimleri result resminin üst ve altına ekler
+    result = result[0:800, 0:1240] #oluşturulan siyah resimleri result resminin üst ve altına ekler
+    result = np.hstack([np.zeros((800,40,3),dtype=np.uint8),result]) #resim boyutunu değiştirmeden sağdan ve soldan 440 piksel ekle
+   
+
+    print("result shape:",result.shape)
+    #iki resmi birleştir
+    result = cv2.addWeighted(result, 0.8, car_img, 1,0)
 
     # Siyah renk değeri
     color = [0, 0, 0]  # Siyah için RGB değeri
 
     # Resmin etrafına siyah çerçeve ekleyin
-    result = cv2.copyMakeBorder(result, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
-    result[188:488,580:680] = car_img[20:320,391:491]
 
-    # Apply Canny edge detection
-   # edges = cv2.Canny(blurred, 50, 150)
 
-    cv2.imshow('Lane Detection', result)
+    
+
+
+
+    
     cv2.imshow('Original', frame)
+    cv2.imshow('Output', result)
+   
 
-    
-    #cv2.imshow('gray', gray)
-   # cv2.imshow('blurred', blurred)
-    #cv2.imshow('edges', edges)
-    
-
- 
 
     # Exit if 'q' is pressed
     if cv2.waitKey(100) & 0xFF == ord('q'):
