@@ -13,5 +13,4 @@ Bird's-eye lane detection for autonomous cars
         .
         .
     ├── Documents                               # Document Files
-        .
-        .
+    
