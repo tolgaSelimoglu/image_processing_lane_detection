@@ -15,3 +15,10 @@ Lane Detection Files is here!
     ├── Documents                               # Document Files
         .
         .
+### Run code
+    python image_process_v1.py
+     . First screen for select area 
+     . Double click for insert circle
+     . Press enter for show area
+     . press q for continue the code
+     . And Show the result
