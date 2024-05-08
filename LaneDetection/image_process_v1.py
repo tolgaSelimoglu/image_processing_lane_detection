@@ -39,9 +39,9 @@ def area_select(frame):
     while(1):
         cv2.imshow('image', frame)
         # enter a basılırsa çık
-        if cv2.waitKey(100) & 0xFF == 13:
+        if len(crp_point) == 4:
             draw_lines(frame,  crp_point)
-        if cv2.waitKey(100) & 0xFF == ord('q'):
+        if cv2.waitKey(100) & 0xFF == 13:
             break
     cv2.destroyAllWindows()
 
@@ -83,7 +83,7 @@ def detect_lanes(frame):
 
 
     # Apply Hough transform to detect lines
-    lines = cv2.HoughLinesP(masked_edges, 1, np.pi/180 ,100, minLineLength=10, maxLineGap=5)
+    lines = cv2.HoughLinesP(masked_edges, 0.1, np.pi/180 ,20, minLineLength=1, maxLineGap=100000)
     
     # Draw the detected lines on the frame
     line_image = np.zeros_like(frame)
@@ -91,35 +91,54 @@ def detect_lanes(frame):
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
-            cv2.line(line_image, (x1, y1), (x2, y2), (255, 0,0), 5)
+            print(x1, y1, x2, y2)
+            cv2.line(line_image, (x1, y1), (x2, y2), (255, 100,0), 2)
 
 
 
     # Combine the line image with the original frame
     #result = cv2.bitwise_and(gray,mask)
+
+
+
+    ################################################33
     result = cv2.addWeighted(frame, 0.8, line_image, 1,0)
 
     
        #*****************************************************
-    IMAGE_H = 223   
-    IMAGE_W = 1280
+
+
 
     #src = np.float32([[0,IMAGE_H],[1207, IMAGE_H], [0,0],[IMAGE_W,0]])
     #dst = np.float32([[569,IMAGE_H],[711, IMAGE_H], [0,0],[IMAGE_W,0]])
+    """
+    src = np.float32([crp_point[0],crp_point[1],crp_point[3], crp_point[2] ])
+    dst = np.float32([[0,0],[0, IMAGE_W], [300,300],[300,600]])
+    M = cv2.getPerspectiveTransform(src,dst)
+    """
+    width_AD = np.sqrt(((crp_point[0][0] - crp_point[1][0]) ** 2) + ((crp_point[0][1] - crp_point[1][1]) ** 2))
+    width_BC = np.sqrt(((crp_point[3][0] - crp_point[2][0]) ** 2) + ((crp_point[3][1] - crp_point[2][1]) ** 2))
+    maxWidth = max(int(width_AD), int(width_BC))
+
+    height_AB = np.sqrt(((crp_point[0][0] - crp_point[3][0]) ** 2) + ((crp_point[0][1] - crp_point[3][1]) ** 2))
+    height_CD = np.sqrt(((crp_point[2][0] - crp_point[1][0]) ** 2) + ((crp_point[2][1] - crp_point[1][1]) ** 2))
+    maxHeight = max(int(height_AB), int(height_CD))
 
     src = np.float32([crp_point[0],crp_point[1],crp_point[3], crp_point[2] ])
-    dst = np.float32([[300,IMAGE_H],[711, IMAGE_H], [0,0],[IMAGE_W,0]])
-
+    dst = np.float32([[0,0],[maxWidth,0],[0,maxHeight],[maxWidth,maxHeight]])
+    
     M = cv2.getPerspectiveTransform(src,dst)
-
+    result = cv2.warpPerspective(result, M , (maxWidth,maxHeight))
     
     
-    
-    result = cv2.warpPerspective(result, M , (IMAGE_W,IMAGE_H))
+    #line_image = cv2.warpPerspective(line_image, M , (int(maxWidth*0.75),int(maxHeight*0.75)))
     #*****************************************************
     #180 derece çevirme kodu
-    result = cv2.rotate(result, cv2.ROTATE_180)
+    #result = cv2.rotate(result, cv2.ROTATE_180)
 
+    #result = cv2.addWeighted(result, 0.8, line_image, 1,0)
+    #result = cv2.warpAffine(result, np.float32([[1, 0, -500], [0, 1, -100]]), (result.shape[1], result.shape[0]))
+    
     return result
 
 # Open the video file
@@ -127,24 +146,6 @@ def detect_lanes(frame):
 #open the image file
 video = cv2.VideoCapture("videos/solidWhiteRight.mp4")
 #video = cv2.VideoCapture(0)
-car_img = cv2.imread("static_car_photos/car_bev1.png")
-
-if car_img is not None:
-    # car_img scale %50
-    scale_percent = 50 # percent of original size
-    width = int(car_img.shape[1]* scale_percent / 100)
-    height = int(car_img.shape[0] * scale_percent / 100)
-    dim = (width, height)
-    car_img = cv2.resize(car_img, dim, interpolation = cv2.INTER_AREA) # 400x400
-else:
-    print("Failed to load car image.")
-
-# BEYAZ ARKA PLANI SİYAH YAP
-car_img[np.where((car_img==[255,255,255]).all(axis=2))] = [0,0,0]
-# resim boyutunu değiştirmeden üstten 400 piksel ekle
-car_img = np.vstack([np.zeros((400,400,3),dtype=np.uint8),car_img])
-# resim boyutunu değiştirmeden sağdan ve soldan 440 piksel ekle
-car_img = np.hstack([np.zeros((800,440,3),dtype=np.uint8),car_img,np.zeros((800,440,3),dtype=np.uint8)])
 
 while True:
     # Read a frame from the video
@@ -160,35 +161,32 @@ while True:
 
     if not ret:
         break
-    result = detect_lanes(frame)
-    result = cv2.resize(result, (1280, 400))
     
+    result = detect_lanes(frame)
+
+   # result = cv2.resize(result, (1280, 400))
+
+
+
+    """
     result = np.vstack([np.zeros((75,1280,3),dtype=np.uint8),result,np.zeros((325,1280,3),dtype=np.uint8)]) 
     #np.zeros((75,1280,3),dtype=np.uint8) şu anlama gelir 75x1280 boyutunda siyah bir resim oluştur
     #np.zeros((325,1280,3),dtype=np.uint8) şu anlama gelir 325x1280 boyutunda siyah bir resim oluştur
     #result = np.vstack([np.zeros((75,1280,3),dtype=np.uint8),result,np.zeros((325,1280,3),dtype=np.uint8)]) #oluşturulan siyah resimleri result resminin üst ve altına ekler
     result = result[0:800, 0:1240] #oluşturulan siyah resimleri result resminin üst ve altına ekler
     result = np.hstack([np.zeros((800,40,3),dtype=np.uint8),result]) #resim boyutunu değiştirmeden sağdan ve soldan 440 piksel ekle
-   
+   """
 
-    print("result shape:",result.shape)
-    #iki resmi birleştir
-    result = cv2.addWeighted(result, 0.8, car_img, 1,0)
 
-    # Siyah renk değeri
-    color = [0, 0, 0]  # Siyah için RGB değeri
-
-    # Resmin etrafına siyah çerçeve ekleyin
 
 
     
-
 
 
     
     cv2.imshow('Original', frame)
     cv2.imshow('Output', result)
-   
+
 
 
     # Exit if 'q' is pressed
