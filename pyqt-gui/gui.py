@@ -71,9 +71,10 @@ class InitialWindow(QWidget):
         if self.selected_video == "N/A":
             self.selected_video = self.cb_scenario.currentText()
 
+        self.close()
         procesor = ImageProcessor(str(self.selected_video))
         procesor.process()
-        self.close()
+        
 
     def errorHandler(self):
         QMessageBox.information(self, 'Message', 'Error!')

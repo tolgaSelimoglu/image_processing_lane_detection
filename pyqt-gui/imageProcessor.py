@@ -1,3 +1,4 @@
+from screeninfo import get_monitors
 import numpy as np
 import cv2
 
@@ -23,11 +24,7 @@ class ImageProcessor:
         cv2.namedWindow('image', cv2.WND_PROP_FULLSCREEN)
         cv2.setMouseCallback('image', self.draw_circle)
 
-        #screen_width = 1366  # Default width, you may need to update this
-        #screen_height = 768  # Default height, you may need to update this
-
         cv2.setWindowProperty("image",cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
-       # cv2.moveWindow('image', int(screen_width * 0.25), int(screen_height * 0.25))  # Position the window at (10% of screen width, 10% of screen height)
 
         while(1):
             cv2.imshow('image', self.frame)
@@ -51,16 +48,9 @@ class ImageProcessor:
 
         mask = np.zeros_like(edges)
         cv2.fillPoly(mask, np.array([roi_vertices], np.int32), 255)
-        masked_edges = cv2.bitwise_and(edges, mask)
-        cv2.namedWindow('masked_edges')
-        cv2.imshow('masked_edges', masked_edges)
+        self.masked_edges = cv2.bitwise_and(edges, mask)
 
-        screen_width = 1920  # Default width, you may need to update this
-        screen_height = 1080  # Default height, you may need to update this
-
-        cv2.moveWindow('masked_edges', int(screen_width * 0.5), int(screen_height * 0.1))  # Position the window at (50% of screen width, 10% of screen height)
-
-        lines = cv2.HoughLinesP(masked_edges, 0.1, np.pi / 180, 20, minLineLength=1, maxLineGap=100000)  # Apply Hough transform to detect lines
+        lines = cv2.HoughLinesP(self.masked_edges, 0.1, np.pi / 180, 20, minLineLength=1, maxLineGap=100000)  # Apply Hough transform to detect lines
 
         line_image = np.zeros_like(self.frame)  # Draw the detected lines on the frame
 
@@ -111,15 +101,24 @@ class ImageProcessor:
 
             result = self.detect_lanes()
 
-            cv2.namedWindow('Original')
-            cv2.imshow('Original', self.frame)
-            screen_width = 1920  # Default width, you may need to update this
-            screen_height = 1080  # Default height, you may need to update this
-            cv2.moveWindow('Original', int(screen_width * 0.1), int(screen_height * 0.6))  # Position the window at (10% of screen width, 60% of screen height)
+            monitor = get_monitors()[0]
+            screen_width = monitor.width
+            screen_height = monitor.height
 
-            cv2.namedWindow('Output')
+            cv2.namedWindow('Output', cv2.WINDOW_NORMAL)
+            cv2.resizeWindow('Output', 683, 700)
+            cv2.moveWindow('Output', 0, 0)
             cv2.imshow('Output', result)
-            cv2.moveWindow('Output', int(screen_width * 0.5), int(screen_height * 0.6))  # Position the window at (50% of screen width, 60% of screen height)
+
+            cv2.namedWindow('Original', cv2.WINDOW_NORMAL)
+            cv2.resizeWindow('Original', 683, 300)
+            cv2.moveWindow('Original', 683, 0)
+            cv2.imshow('Original', self.frame)
+
+            cv2.namedWindow('masked_edges', cv2.WINDOW_NORMAL)
+            cv2.resizeWindow('masked_edges', 683, 300)
+            cv2.moveWindow('masked_edges', 683, 400)
+            cv2.imshow('masked_edges', self.masked_edges)
 
             if cv2.waitKey(100) & 0xFF == ord('q'):
                 break  # Exit if 'q' is pressed
